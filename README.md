@@ -57,7 +57,7 @@ services.dokploy = {
   enable = true;
   dataDir = "/var/lib/dokploy";  # Default
   dokployImage = "dokploy/dokploy:latest";  # Default
-  traefik.image = "traefik:v3.1.2";  # Default
+  traefik.image = "traefik:v3.5.0";  # Default at time of writing
 };
 ```
 
