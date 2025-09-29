@@ -86,6 +86,9 @@ services.dokploy.swarm.advertiseAddress = {
 services.dokploy.swarm.advertiseAddress = {
   command = "tailscale ip -4 | head -n1";
 };
+
+# Auto-recreate swarm when IP changes (useful for dynamic IPs)
+services.dokploy.swarm.autoRecreate = true;
 ```
 
 **Note on Multi-Node Swarms:**
@@ -97,7 +100,7 @@ Some viable secure alternatives include:
 - **Private networks**: Use private IPs when nodes are on the same network
 - **Cloud security groups**: Restrict access to specific trusted IPs if public addressing is necessary
 
-For single-node setups (the most common case), the default `"private"` setting should work well.
+For single-node setups (the most common case), the default `"private"` setting should work well. If your IP changes frequently (Tailscale, DHCP), enable `swarm.autoRecreate` to automatically handle address changes.
 
 ### Web UI Port Configuration
 

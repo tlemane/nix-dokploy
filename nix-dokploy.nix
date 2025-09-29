@@ -121,6 +121,23 @@ in {
           Only use "public" if you plan to add external nodes to the swarm.
         '';
       };
+
+      autoRecreate = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Automatically recreate the swarm on service restart.
+
+          When enabled, the swarm will be torn down and recreated every time
+          the service starts, ensuring the advertise address is always current.
+
+          This is safe for single-node Dokploy setups where no other services
+          use Docker Swarm. Useful when IPs may change (e.g., Tailscale, DHCP).
+
+          WARNING: Do not enable if you have other Docker Swarm services or
+          multi-node setup.
+        '';
+      };
     };
   };
 
@@ -185,10 +202,25 @@ in {
                 exit 1
               fi
 
-              # Initialize swarm if not already active
-              if ! docker info | grep -q "Swarm: active"; then
+              # Check current swarm state
+              swarm_active=$(docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null || echo "inactive")
+              current_addr=$(docker info --format '{{.Swarm.NodeAddr}}' 2>/dev/null || echo "")
+
+              # Leave swarm if auto-recreate is enabled and address changed
+              ${if cfg.swarm.autoRecreate then ''
+                if [[ "$swarm_active" == "active" ]] && [[ "$current_addr" != "$advertise_addr" ]]; then
+                  echo "Advertise address changed ($current_addr -> $advertise_addr), recreating swarm..."
+                  docker swarm leave --force
+                  swarm_active="inactive"
+                fi
+              '' else ""}
+
+              # Initialize swarm if inactive
+              if [[ "$swarm_active" != "active" ]]; then
                 echo "Initializing Docker Swarm with advertise address $advertise_addr..."
                 docker swarm init --advertise-addr "$advertise_addr"
+              else
+                echo "Docker Swarm already active"
               fi
 
               # Deploy Dokploy stack
