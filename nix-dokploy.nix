@@ -5,6 +5,10 @@
   ...
 }: let
   cfg = config.services.dokploy;
+
+  stackConfig = import ./dokploy-stack.nix {inherit cfg lib;};
+  yamlFormat = pkgs.formats.yaml {};
+  stackFile = yamlFormat.generate "dokploy-stack.yml" stackConfig;
 in {
   options.services.dokploy = {
     enable = lib.mkOption {
@@ -33,6 +37,39 @@ in {
           The default value matches what Dokploy expects internally.
         '';
       };
+    };
+
+    image = lib.mkOption {
+      type = lib.types.str;
+      default = "dokploy/dokploy:latest";
+      description = ''
+        Dokploy Docker image to use.
+        Note: Check Dokploy's installation script for compatible Traefik versions
+        when changing this.
+      '';
+    };
+
+    port = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = "3000:3000";
+      example = lib.literalExpression ''
+        "3000:3000"                 # Default: expose on all interfaces (Docker bypasses firewall!)
+        "127.0.0.1:3000:3000"       # Localhost only (secure, requires reverse proxy)
+        "8080:3000"                 # Custom external port
+        null                        # Disable direct access (use Traefik only)
+      '';
+      description = ''
+        Port binding for Dokploy web UI.
+
+        WARNING: Docker bypasses host firewall rules. Setting "3000:3000" exposes
+        the port to the internet regardless of firewall configuration.
+
+        Secure options:
+        - Set to "127.0.0.1:3000:3000" for localhost-only access
+        - Set to null to disable direct access (configure reverse proxy in Dokploy UI)
+
+        Format: "[host:]port:containerPort" or null
+      '';
     };
 
     traefik = {
@@ -83,16 +120,6 @@ in {
           internal networking, or complex network setups (use custom command).
         '';
       };
-    };
-
-    dokployImage = lib.mkOption {
-      type = lib.types.str;
-      default = "dokploy/dokploy:latest";
-      description = ''
-        Dokploy Docker image to use.
-        Note: Check Dokploy's installation script for compatible Traefik versions
-        when changing this.
-      '';
     };
   };
 
@@ -169,11 +196,20 @@ in {
               else
                 echo "Deploying Dokploy stack..."
               fi
+
+              ${
+                if cfg.port == null
+                then ''
+                  echo "Web UI port binding disabled - access via Traefik only"
+                ''
+                else ''
+                  echo "Web UI will be available on port binding: ${cfg.port}"
+                ''
+              }
+
               ADVERTISE_ADDR="$advertise_addr" \
               POSTGRES_PASSWORD="${cfg.database.password}" \
-              DOKPLOY_IMAGE="${cfg.dokployImage}" \
-              DATA_DIR="${cfg.dataDir}" \
-              docker stack deploy -c ${./dokploy.stack.yml} dokploy
+              docker stack deploy -c ${stackFile} dokploy
             '';
           };
         in "${script}/bin/dokploy-stack-start";

@@ -62,7 +62,8 @@ That's it! Dokploy will be available at `http://your-server-ip:3000`
 | Option | Default | Description |
 |--------|---------|-------------|
 | `services.dokploy.dataDir` | `/var/lib/dokploy` | Data directory for Dokploy |
-| `services.dokploy.dokployImage` | `dokploy/dokploy:latest` | Dokploy Docker image |
+| `services.dokploy.image` | `dokploy/dokploy:latest` | Dokploy Docker image |
+| `services.dokploy.port` | `"3000:3000"` | Port binding for web UI (⚠️ see note) |
 | `services.dokploy.traefik.image` | `traefik:v3.5.0` | Traefik Docker image |
 
 ### Swarm Advertise Address
@@ -85,6 +86,22 @@ services.dokploy.swarm.advertiseAddress = {
 services.dokploy.swarm.advertiseAddress = {
   command = "ip route get 1 | awk '{print $7;exit}'";
 };
+```
+
+### Web UI Port Configuration
+
+⚠️ **Recommendation**: Disable port 3000 once Traefik is configured to reverse proxy Dokploy.
+
+1. Deploy with default port for initial configuration
+2. Access Dokploy UI and configure Traefik reverse proxy
+3. Redeploy with `port = null` to disable direct access
+
+```nix
+# Default - Exposes port 3000 to all interfaces (bypasses firewall!)
+services.dokploy.port = "3000:3000";
+
+# Disable direct port access (access through Traefik only)
+services.dokploy.port = null;
 ```
 
 ## 📄 License
