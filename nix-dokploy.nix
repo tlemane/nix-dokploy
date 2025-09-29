@@ -98,7 +98,7 @@ in {
             };
           })
         ];
-        default = "public";
+        default = "private";
         example = lib.literalExpression ''
           "public"                                     # Use public IP via ifconfig.me
           # or
@@ -111,13 +111,14 @@ in {
         description = ''
           Docker Swarm advertise address configuration. Can be:
 
-          - `"public"` (default): Use public IP via ifconfig.me
-          - `"private"`: Use first private IP from hostname -I
+          - `"private"` (default): Use first private IP from hostname -I (more secure)
+          - `"public"`: Use public IP via ifconfig.me (exposes swarm ports to internet)
           - `{ command = "..."; }`: Custom shell command that outputs an IP
 
           This is evaluated at service startup, allowing dynamic IP detection.
-          Useful for home servers (set to "private"), cloud environments with
-          internal networking, or complex network setups (use custom command).
+
+          For single-node setups, "private" is recommended for security.
+          Only use "public" if you plan to add external nodes to the swarm.
         '';
       };
     };

@@ -71,22 +71,33 @@ That's it! Dokploy will be available at `http://your-server-ip:3000`
 Control which IP address Docker Swarm advertises to other nodes:
 
 ```nix
-# Use public IP fetched via ifconfig.me (default)
-services.dokploy.swarm.advertiseAddress = "public";
-
-# Use private IP (for home/internal networks)
+# Use private IP (default - recommended for security)
 services.dokploy.swarm.advertiseAddress = "private";
+
+# Use public IP (see security note below)
+services.dokploy.swarm.advertiseAddress = "public";
 
 # Use a specific IP
 services.dokploy.swarm.advertiseAddress = {
   command = "echo 192.168.1.100";
 };
 
-# Use custom detection logic
+# Use Tailscale IP (recommended for multi-node)
 services.dokploy.swarm.advertiseAddress = {
-  command = "ip route get 1 | awk '{print $7;exit}'";
+  command = "tailscale ip -4 | head -n1";
 };
 ```
+
+**Note on Multi-Node Swarms:**
+
+Using `"public"` will expose swarm management ports (2377, 7946, 4789) to the internet. It seems unwise to do this unless you really know what you're doing and have properly secured these ports.
+
+Some viable secure alternatives include:
+- **Tailscale or WireGuard**: Use VPN IPs as advertise addresses for secure node-to-node communication
+- **Private networks**: Use private IPs when nodes are on the same network
+- **Cloud security groups**: Restrict access to specific trusted IPs if public addressing is necessary
+
+For single-node setups (the most common case), the default `"private"` setting should work well.
 
 ### Web UI Port Configuration
 
