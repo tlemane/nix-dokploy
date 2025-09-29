@@ -95,6 +95,15 @@ in {
                 description = "Shell command that outputs an IP address";
                 example = "ip route get 1 | awk '{print $7;exit}'";
               };
+              extraPackages = lib.mkOption {
+                type = lib.types.listOf lib.types.package;
+                default = [];
+                example = lib.literalExpression "[ pkgs.tailscale pkgs.iproute2 ]";
+                description = ''
+                  Extra packages to make available to the command.
+                  For example, if using tailscale, add pkgs.tailscale here.
+                '';
+              };
             };
           })
         ];
@@ -106,14 +115,17 @@ in {
           # or
           { command = "echo 192.168.1.100"; }         # Static IP via command
           # or
-          { command = "ip route get 1 | awk '{print $7;exit}'"; }  # Custom detection
+          {
+            command = "tailscale ip -4 | head -n1";  # Use Tailscale IP
+            extraPackages = [ pkgs.tailscale ];
+          }
         '';
         description = ''
           Docker Swarm advertise address configuration. Can be:
 
           - `"private"` (default): Use first private IP from hostname -I (more secure)
           - `"public"`: Use public IP via ifconfig.me (exposes swarm ports to internet)
-          - `{ command = "..."; }`: Custom shell command that outputs an IP
+          - `{ command = "..."; extraPackages = [...]; }`: Custom shell command that outputs an IP
 
           This is evaluated at service startup, allowing dynamic IP detection.
 
@@ -175,7 +187,10 @@ in {
         ExecStart = let
           script = pkgs.writeShellApplication {
             name = "dokploy-stack-start";
-            runtimeInputs = [pkgs.curl pkgs.docker];
+            runtimeInputs = [pkgs.curl pkgs.docker pkgs.hostname pkgs.gawk] ++
+              (if cfg.swarm.advertiseAddress ? extraPackages
+               then cfg.swarm.advertiseAddress.extraPackages
+               else []);
             text = ''
               # Get advertise address based on configuration
               ${

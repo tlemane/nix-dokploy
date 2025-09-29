@@ -65,6 +65,7 @@ That's it! Dokploy will be available at `http://your-server-ip:3000`
 | `services.dokploy.image` | `dokploy/dokploy:latest` | Dokploy Docker image |
 | `services.dokploy.port` | `"3000:3000"` | Port binding for web UI (⚠️ see note) |
 | `services.dokploy.traefik.image` | `traefik:v3.5.0` | Traefik Docker image |
+| `services.dokploy.swarm.autoRecreate` | `false` | Auto-recreate swarm when IP changes |
 
 ### Swarm Advertise Address
 
@@ -85,6 +86,7 @@ services.dokploy.swarm.advertiseAddress = {
 # Use Tailscale IP (recommended for multi-node)
 services.dokploy.swarm.advertiseAddress = {
   command = "tailscale ip -4 | head -n1";
+  extraPackages = [ pkgs.tailscale ];
 };
 
 # Auto-recreate swarm when IP changes (useful for dynamic IPs)
@@ -96,6 +98,7 @@ services.dokploy.swarm.autoRecreate = true;
 Using `"public"` will expose swarm management ports (2377, 7946, 4789) to the internet. It seems unwise to do this unless you really know what you're doing and have properly secured these ports.
 
 Some viable secure alternatives include:
+
 - **Tailscale or WireGuard**: Use VPN IPs as advertise addresses for secure node-to-node communication
 - **Private networks**: Use private IPs when nodes are on the same network
 - **Cloud security groups**: Restrict access to specific trusted IPs if public addressing is necessary
