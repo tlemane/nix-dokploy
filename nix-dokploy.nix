@@ -47,6 +47,44 @@ in {
       };
     };
 
+    swarm = {
+      advertiseAddress = lib.mkOption {
+        type = lib.types.oneOf [
+          (lib.types.enum ["public" "private"])
+          (lib.types.submodule {
+            options = {
+              command = lib.mkOption {
+                type = lib.types.str;
+                description = "Shell command that outputs an IP address";
+                example = "ip route get 1 | awk '{print $7;exit}'";
+              };
+            };
+          })
+        ];
+        default = "public";
+        example = lib.literalExpression ''
+          "public"                                     # Use public IP via ifconfig.me
+          # or
+          "private"                                    # Use first private IP from hostname -I
+          # or
+          { command = "echo 192.168.1.100"; }         # Static IP via command
+          # or
+          { command = "ip route get 1 | awk '{print $7;exit}'"; }  # Custom detection
+        '';
+        description = ''
+          Docker Swarm advertise address configuration. Can be:
+
+          - `"public"` (default): Use public IP via ifconfig.me
+          - `"private"`: Use first private IP from hostname -I
+          - `{ command = "..."; }`: Custom shell command that outputs an IP
+
+          This is evaluated at service startup, allowing dynamic IP detection.
+          Useful for home servers (set to "private"), cloud environments with
+          internal networking, or complex network setups (use custom command).
+        '';
+      };
+    };
+
     dokployImage = lib.mkOption {
       type = lib.types.str;
       default = "dokploy/dokploy:latest";
@@ -94,7 +132,30 @@ in {
             name = "dokploy-stack-start";
             runtimeInputs = [pkgs.curl pkgs.docker];
             text = ''
-              advertise_addr="$(curl -s ifconfig.me)"
+              # Get advertise address based on configuration
+              ${
+                if cfg.swarm.advertiseAddress == "public"
+                then ''
+                  echo "Getting public IP address..."
+                  advertise_addr="$(curl -s ifconfig.me)"
+                ''
+                else if cfg.swarm.advertiseAddress == "private"
+                then ''
+                  echo "Getting private IP address..."
+                  advertise_addr="$(hostname -I | awk '{print $1}')"
+                ''
+                else ''
+                  echo "Getting IP address from custom command..."
+                  advertise_addr="$(${cfg.swarm.advertiseAddress.command})"
+                ''
+              }
+              echo "Advertise address: $advertise_addr"
+
+              # Validate IP address format (basic check)
+              if [[ ! "$advertise_addr" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "Error: '$advertise_addr' is not a valid IPv4 address" >&2
+                exit 1
+              fi
 
               # Initialize swarm if not already active
               if ! docker info | grep -q "Swarm: active"; then

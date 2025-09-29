@@ -18,9 +18,15 @@ A **NixOS module** that runs [Dokploy](https://dokploy.com/) (a self-hosted PaaS
 ![Service Status](./Readme/systemctl-status-dokploy.png)
 ![Docker Stack](./Readme/docker-stack-ps-dokploy.png)
 
-## 🚀 Usage
+## 📋 Requirements
 
-Add the input to your `flake.nix`:
+- Docker must be enabled
+- Docker live-restore must be disabled (required for swarm)
+- Rootless Docker is not supported (swarm limitation)
+
+## 🚀 Quick Start
+
+Add to your `flake.nix`:
 
 ```nix
 {
@@ -34,8 +40,11 @@ Add the input to your `flake.nix`:
       modules = [
         nix-dokploy.nixosModules.default
         {
+          # Required dependencies
           virtualisation.docker.enable = true;
           virtualisation.docker.daemon.settings.live-restore = false;
+
+          # Enable Dokploy
           services.dokploy.enable = true;
         }
       ];
@@ -44,20 +53,37 @@ Add the input to your `flake.nix`:
 }
 ```
 
-## 📋 Notes
+That's it! Dokploy will be available at `http://your-server-ip:3000`
 
-- Requires docker
-- Rootless docker not supported due to swarm usage
-- Docker live-restore must be disabled due to swarm usage
+## ⚙️ Configuration Options
 
-## ⚙️ Configuration
+### Basic Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `services.dokploy.dataDir` | `/var/lib/dokploy` | Data directory for Dokploy |
+| `services.dokploy.dokployImage` | `dokploy/dokploy:latest` | Dokploy Docker image |
+| `services.dokploy.traefik.image` | `traefik:v3.5.0` | Traefik Docker image |
+
+### Swarm Advertise Address
+
+Control which IP address Docker Swarm advertises to other nodes:
 
 ```nix
-services.dokploy = {
-  enable = true;
-  dataDir = "/var/lib/dokploy";  # Default
-  dokployImage = "dokploy/dokploy:latest";  # Default
-  traefik.image = "traefik:v3.5.0";  # Default at time of writing
+# Use public IP fetched via ifconfig.me (default)
+services.dokploy.swarm.advertiseAddress = "public";
+
+# Use private IP (for home/internal networks)
+services.dokploy.swarm.advertiseAddress = "private";
+
+# Use a specific IP
+services.dokploy.swarm.advertiseAddress = {
+  command = "echo 192.168.1.100";
+};
+
+# Use custom detection logic
+services.dokploy.swarm.advertiseAddress = {
+  command = "ip route get 1 | awk '{print $7;exit}'";
 };
 ```
 
