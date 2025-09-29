@@ -60,3 +60,9 @@ services.dokploy = {
   traefik.image = "traefik:v3.1.2";  # Default
 };
 ```
+
+## 📄 License
+
+This NixOS module is licensed under the [MIT License](./LICENSE) - use it freely without restrictions.
+
+**Note:** Dokploy itself is licensed under [Apache License 2.0 with additional terms](https://github.com/Dokploy/dokploy/blob/canary/LICENSE.MD). This module simply wraps Dokploy for NixOS deployment.
